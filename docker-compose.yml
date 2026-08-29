@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # Primary PostgreSQL 16 (Master - Read/Write)
+  postgres-primary:
+    image: postgres:16-alpine
+    container_name: englishhive-postgres-primary
+    environment:
+      POSTGRES_DB: englishhive
+      POSTGRES_USER: englishhive_user
+      POSTGRES_PASSWORD: englishhive_secure_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_primary:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U englishhive_user -d englishhive"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - englishhive-net
+
+  # Read Replica PostgreSQL 16 (Replica - Read-Only)
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: englishhive-postgres-replica
+    environment:
+      POSTGRES_DB: englishhive
+      POSTGRES_USER: englishhive_user
+      POSTGRES_PASSWORD: englishhive_secure_password_2026
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_replica:/var/lib/postgresql/data
+    networks:
+      - englishhive-net
+
+  # Redis Distributed Cache & Distributed Locking
+  redis:
+    image: redis:7-alpine
+    container_name: englishhive-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - englishhive-net
+
+  # Zookeeper (for Kafka)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: englishhive-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - englishhive-net
+
+  # Apache Kafka (Domain Event-Driven Bus)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: englishhive-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - englishhive-net
+
+  # Spring Boot Modular Backend
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: englishhive-backend
+    depends_on:
+      postgres-primary:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_PRIMARY_URL: jdbc:postgresql://postgres-primary:5432/englishhive
+      SPRING_DATASOURCE_REPLICA_URL: jdbc:postgresql://postgres-replica:5432/englishhive
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      JWT_SECRET: EnglishHiveSuperSecureProductionKeyWithHMACSHA512Validation2026EnterpriseEdition
+    networks:
+      - englishhive-net
+
+  # Angular 21 Institutional Frontend with Nginx
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: englishhive-frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "4200:80"
+    networks:
+      - englishhive-net
+
+volumes:
+  pgdata_primary:
+  pgdata_replica:
+  redisdata:
+
+networks:
+  englishhive-net:
+    driver: bridge
