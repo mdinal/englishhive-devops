@@ -25,5 +25,5 @@ output "media_bucket_name" {
 
 output "monthly_aws_budget_estimate" {
   description = "Estimated Monthly Total AWS Cost"
-  value       = "\$15.00 - \$28.00 / month (with Containerized PostgreSQL & Redis on ECS/App Runner)"
+  value       = "$15.00 - $28.00 / month (with Containerized PostgreSQL & Redis on ECS/App Runner)"
 }
