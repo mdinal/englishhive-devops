@@ -97,11 +97,15 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_PRIMARY_URL: jdbc:postgresql://postgres-primary:5432/englishhive
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-primary:5432/englishhive
+      SPRING_DATASOURCE_USERNAME: englishhive_user
+      SPRING_DATASOURCE_PASSWORD: englishhive_secure_password_2026
       SPRING_DATASOURCE_REPLICA_URL: jdbc:postgresql://postgres-replica:5432/englishhive
+      SPRING_DATASOURCE_REPLICA_USERNAME: englishhive_user
+      SPRING_DATASOURCE_REPLICA_PASSWORD: englishhive_secure_password_2026
       SPRING_DATA_REDIS_HOST: redis
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      JWT_SECRET: EnglishHiveSuperSecureProductionKeyWithHMACSHA512Validation2026EnterpriseEdition
+      APP_JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     networks:
       - englishhive-net
 

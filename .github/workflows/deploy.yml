@@ -1,4 +1,4 @@
-name: Automated Terraform AWS Infrastructure Deployment
+name: EnglishHive DevOps & Infrastructure Deployment
 
 on:
   push:
@@ -7,15 +7,22 @@ on:
     paths:
       - 'terraform/**'
       - '.github/workflows/deploy.yml'
+      - 'deploy-aws.sh'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+  workflow_dispatch:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
-  terraform-deploy:
-    name: Terraform Init & Apply
+  terraform-ci:
+    name: Terraform Check & Validate
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -32,8 +39,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
-      - name: Terraform Init & Apply
+      - name: Terraform Format Check & Validate
         run: |
           cd terraform
+          terraform fmt -check
           terraform init
+          terraform validate
+
+      - name: Terraform Apply (Main Branch)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          cd terraform
           terraform apply -auto-approve

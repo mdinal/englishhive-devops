@@ -53,6 +53,32 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# IAM Policy to allow ECS Execution Role to fetch secrets from AWS Secrets Manager
+resource "aws_iam_policy" "ecs_secrets_policy" {
+  name        = "englishhive-ecs-secrets-policy"
+  description = "Allow ECS tasks to retrieve credentials from AWS Secrets Manager"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          aws_secretsmanager_secret.app_secrets.arn
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_secrets_policy_attachment" {
+  role       = aws_iam_role.ecs_execution_role.name
+  policy_arn = aws_iam_policy.ecs_secrets_policy.arn
+}
+
 # ECS Fargate Task Definition for Backend
 resource "aws_ecs_task_definition" "backend" {
   family                   = "englishhive-backend-task"
@@ -73,7 +99,19 @@ resource "aws_ecs_task_definition" "backend" {
     }]
     environment = [
       { name = "SPRING_PROFILES_ACTIVE", value = "prod" },
-      { name = "JWT_SECRET", value = "EnglishHiveSuperSecureProductionKeyWithHMACSHA512Validation2026EnterpriseEdition" }
+      { name = "SPRING_DATASOURCE_URL", value = "jdbc:postgresql://${aws_instance.database.private_ip}:5432/englishhive" },
+      { name = "SPRING_DATASOURCE_USERNAME", value = "englishhive_user" },
+      { name = "SPRING_DATA_REDIS_HOST", value = aws_instance.database.private_ip }
+    ]
+    secrets = [
+      {
+        name      = "SPRING_DATASOURCE_PASSWORD"
+        valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:DB_PASSWORD::"
+      },
+      {
+        name      = "APP_JWT_SECRET"
+        valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:JWT_SECRET::"
+      }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -101,6 +139,7 @@ resource "aws_ecs_service" "backend" {
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.ecs_execution_policy
+    aws_iam_role_policy_attachment.ecs_execution_policy,
+    aws_instance.database
   ]
 }

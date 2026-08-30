@@ -3,7 +3,12 @@
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+*.tfvars
+*.tfvars.json
 
 # Environment & credentials
 .env
+.env.*
 *.pem
+*.key
+

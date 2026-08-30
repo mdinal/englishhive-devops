@@ -1,6 +1,6 @@
 # S3 Bucket for DRM Encrypted HLS Video Chunks and Frontend SPA Assets
 resource "aws_s3_bucket" "protected_media" {
-  bucket = "englishhive-protected-media-406579089446-${var.environment}"
+  bucket = "englishhive-protected-media-${data.aws_caller_identity.current.account_id}-${var.environment}"
 }
 
 resource "aws_s3_bucket_public_access_block" "block_public" {
@@ -39,8 +39,8 @@ resource "aws_s3_bucket_policy" "allow_cloudfront" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid       = "AllowCloudFrontServicePrincipalReadOnly"
-        Effect    = "Allow"
+        Sid    = "AllowCloudFrontServicePrincipalReadOnly"
+        Effect = "Allow"
         Principal = {
           Service = "cloudfront.amazonaws.com"
         }
@@ -68,6 +68,7 @@ resource "aws_cloudfront_distribution" "media_cdn" {
   is_ipv6_enabled     = true
   comment             = "EnglishHive Protected HLS Stream & Frontend CDN"
   default_root_object = "index.html"
+  web_acl_id          = aws_wafv2_web_acl.waf.arn
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]

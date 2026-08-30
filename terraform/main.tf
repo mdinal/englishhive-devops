@@ -6,7 +6,18 @@ terraform {
       version = "~> 5.40"
     }
   }
+
+  # Uncomment after creating the remote state bucket with `terraform apply -target=aws_s3_bucket.terraform_state -target=aws_dynamodb_table.terraform_locks`
+  # backend "s3" {
+  #   bucket         = "englishhive-terraform-state-406579089446-prod" # Replace with your account ID
+  #   key            = "englishhive/terraform.tfstate"
+  #   region         = "us-east-1"
+  #   dynamodb_table = "englishhive-terraform-locks-prod"
+  #   encrypt        = true
+  # }
 }
+
+data "aws_caller_identity" "current" {}
 
 provider "aws" {
   region = var.aws_region
